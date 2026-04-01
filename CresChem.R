@@ -1,5 +1,8 @@
-## Script to look at Cres E vs. Cres W nutrient, ions, DOC, DO and CO2 data from 2021-2022 and 2022-2023 field seasons
+## Script to plot and analyze at Cres E vs. Cres W and main branch
+##nutrient, ions, DOC, DO and CO2 data from 2021-2022 and 2022-2023 field seasons
 ## Created by ATW 5/2/23
+
+## All data are downloadable directly from the MCM LTER database 
 
 ## TO DO
 
@@ -12,9 +15,10 @@ library(dplyr)
 library(lubridate)
 library (ggplot2)
 library(readxl)
+library(here)
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 
-##input and output location for files
+##local input and output location for files
 drive<-'/Users/annawright/Library/CloudStorage/OneDrive-UCB-O365/MDV streams/'
 outdrive<-'/Users/annawright/Library/CloudStorage/OneDrive-UCB-O365/MDV streams/Crescent/'
 DOdrive<-'/Users/annawright/Library/CloudStorage/OneDrive-UCB-O365/Stream Metabolism/2021_2022_data_ATW/'
@@ -51,9 +55,10 @@ All22<-full_join(All22, Ion22, by=c("Stream", "Season", "Date"))
 
 Cres22<-All22%>%
   dplyr::filter(., Stream=='Crescent'|Stream=='Crescent West'|Stream=='Crescent East')
+### Put mgL into ugL
 Cres22$`NH4 mg/L N`<-(Cres22$`NH4 µg N/L`/1000)
 Cres22$`SRP mg/L`<-(Cres22$`SRP µg P/L`/1000)
-### need to update this to NO3 when we get correct data from Kathy 
+### may need to update this to NO3 when we get correct data from Kathy 
 Cres22$`N+N mg/L of N`<-(Cres22$`Nitrate + nitrite - Results [µg N/liter]`/1000)
 
 ### select only a few for the sake of the poster 
@@ -72,7 +77,7 @@ Cres2$`concentration mg/L`<-as.numeric(Cres2$`concentration mg/L`)
 
 library(ggbreak)
 ##initial plot to just look at them all vs. date
-AllPlot<-ggplot(Cres2, aes(y=`concentration mg/L`, x=Date, color=group, fill=group)) + 
+AllPlot<-ggplot(Cres2, aes(y=`concentration mg/L`, x=Date)) + 
   geom_point(size=6)+geom_line()+
   facet_grid(`variable`~ ., scales = "free_y")+
   ggtitle('Stream Chemistry and DOC')+
@@ -82,6 +87,31 @@ AllPlot<-ggplot(Cres2, aes(y=`concentration mg/L`, x=Date, color=group, fill=gro
   scale_x_break(c(as.Date('2022-02-01'), as.Date('2022-12-01')))+
   scale_x_date(limits = as.Date(c('2021-12-01','2023-01-30')))
 ggsave(AllPlot, filename="AllCresChem.jpeg", device="jpeg", path=paste0(outdrive, 'Plots'), width = 32, height = 25)
+
+### Want to just plot 21-22 season when degradation occurs, add line for degradation event
+Plot21<-ggplot(Cres2, aes(y=`concentration mg/L`, x=Date)) + 
+  geom_point(size=6)+geom_line()+
+  geom_vline(xintercept=as.Date('2021-12-20'), color='red', linewidth=2)+
+  facet_grid(`variable`~ ., scales = "free_y")+
+  ggtitle('21-22 Stream Chemistry')+
+  scale_x_date(limits = as.Date(c('2021-12-01','2022-02-10')))+
+  theme_bw() +
+  theme(plot.title = element_blank(),
+        axis.text = element_text(size = 20),
+        axis.title = element_text(size = 20),
+        axis.title.x = element_blank(),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 20),
+        legend.text = element_text(size = 16),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+  # theme(axis.text.x = element_text(angle = 90))+
+  # theme(text = element_text(size = 40))+
+  # theme(legend.position="right")+
+  # scale_x_break(c(as.Date('2022-02-01'), as.Date('2022-12-01')))+
+ggsave(Plot21, filename="2122CresChem.jpeg", device="jpeg", path=here('Plots'), width = 14, height = 12)
+
+
 
 ##Take averages over both whole seasons #################################################################################
 Cres3<-Cres%>%
@@ -93,24 +123,29 @@ Cres3<-Cres%>%
 Cres4<-Cres3%>% gather("variable", "concentration mg/L", `F_mgL`, `Cl_mgL`,  `SO4_mgL`, `Li_mgL`,
                       `Na_mgL`, `K_mgL`, `Mg_mgL`, `Ca_mgL`, `SRP_mgL`, `N_mgL`, NH4_mgL, `Si_mgL`)
 
+Cres4<-Cres%>% gather("variable", "concentration mg/L", c(4:6,8:16))
+
+
 
 ##Package with colorblind friendly colors
 library(ggpubfigs)
 # using the "ito_seven" color palette and theme_big_simple()
 ggplot(mtcars, aes(factor(carb), fill=factor(cyl))) + geom_bar() + scale_fill_manual(values = friendly_pal("ito_seven")) + theme_big_simple()
 
-AvgPlot<-ggplot(Cres4, aes(y=`concentration mg/L`, x=Stream, color=Stream, fill=Stream)) + 
-  geom_bar(stat="identity", position="dodge2")+
+AvgPlot<-ggplot(Cres4, aes(y=`concentration mg/L`, x=Stream, color=Stream)) + 
+  geom_boxplot(size=2)+
+  # geom_bar(stat="identity", position="dodge2")+
   ##geom_errorbar(aes(color=season))+
   facet_wrap(`variable`~ ., scales = "free_y")+
-  scale_fill_manual(values = friendly_pal("ito_seven"))+
-  theme(panel.background = element_rect(fill = 'white', colour = 'white'))+
+  scale_color_viridis_d()+
+  # theme(panel.background = element_rect(fill = 'white', colour = 'white'))+
   ggtitle('')+
   xlab('')+
-  theme(axis.text.x = element_text(angle = 90))+
-  theme(text = element_text(size = 50))+
-  theme(legend.position="")
-ggsave(AvgPlot, filename="Avg_CresChem.jpeg", device="jpeg", path=paste0(outdrive, 'Plots'), width = 25, height = 20)
+  theme_bw()+
+  theme(axis.text.x = element_text(angle = 90),
+        text = element_text(size = 50),
+        legend.position="")
+ggsave(AvgPlot, filename="Avg_CresChem.jpeg", device="jpeg", path=paste0(here('Plots')), width = 25, height = 20)
 
 ## do a t-test to see if the chemistry between the 3 streams are actually different
 library(tatest)
@@ -225,12 +260,38 @@ AllPlot<-ggplot(all3, aes(y=`concentration (mg/l)`, x=group, fill=group)) +
   geom_boxplot(lwd=3)+
   facet_wrap(`variable`~ ., scales = "free_y")+
   scale_fill_manual(values = friendly_pal("ito_seven"))+
-  theme(panel.background = element_rect(fill = 'white', colour = 'white'))+
+  # theme(panel.background = element_rect(fill = 'white', colour = 'white'))+
   ggtitle('')+
   # theme(axis.text.x = element_text(angle = 90))+
-  theme(text = element_text(size = 50))+
-  theme(legend.position="bottom")
-ggsave(AllPlot, filename="2012_CresChem_Boxplot.jpeg", device="jpeg", path=paste0(outdrive, 'Plots'), width = 25, height = 15)
+  theme_bw()+
+  theme(text = element_text(size = 50),
+        axis.text.x = element_text(size = 35),
+        legend.position="")
+ggsave(AllPlot, filename="2012_CresChem_Boxplot.jpeg", device="jpeg", path=paste0(here('Plots')), width = 26, height = 15)
+
+####### Just plot 2012 season when the degradation occured 
+Plot12<-ggplot(all3, aes(y=`concentration (mg/l)`, x=Date)) + 
+  geom_point(size=6)+geom_line()+
+  geom_vline(xintercept=as.Date('2012-01-19'), color='red', linewidth=2)+
+  facet_grid(`variable`~ ., scales = "free_y")+
+  ggtitle('11-12 Stream Chemistry')+
+  scale_x_date(limits = as.Date(c('2011-12-01','2012-02-10')))+
+  theme_bw() +
+  theme(plot.title = element_blank(),
+        axis.text = element_text(size = 20),
+        axis.title = element_text(size = 20),
+        axis.title.x = element_blank(),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 20),
+        legend.text = element_text(size = 16),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+# theme(axis.text.x = element_text(angle = 90))+
+# theme(text = element_text(size = 40))+
+# theme(legend.position="right")+
+# scale_x_break(c(as.Date('2022-02-01'), as.Date('2022-12-01')))+
+ggsave(Plot12, filename="2012CresChem.jpeg", device="jpeg", path=here('Plots'), width = 14, height = 12)
+
 
 ## do a t-test to see if they are actually different pre and post 2012
 ## modified t-test: "Performs a modified version of the t test to assess the correlation between two spatial processes."
@@ -309,12 +370,13 @@ AllPlot<-ggplot(alldata, aes(y=`concentration mg/L`, x=group, fill=group)) +
   ##geom_errorbar(aes(color=season))+
   facet_wrap(`variable`~ ., scales = "free_y")+
   scale_fill_manual(values = friendly_pal("ito_seven"))+
-  theme(panel.background = element_rect(fill = 'white', colour = 'white'))+
+  # theme(panel.background = element_rect(fill = 'white', colour = 'white'))+
   ggtitle('')+
-  theme(axis.text.x = element_text(angle = 90))+
-  theme(text = element_text(size = 50))+
-  theme(legend.position="")
-ggsave(AllPlot, filename="AllPrePost_Avgs.jpeg", device="jpeg", path=paste0(outdrive, 'Plots'), width = 30, height = 25)
+  theme_bw()+
+  theme(axis.text.x = element_text(angle = 90),
+        text = element_text(size = 50),
+        legend.position="")
+ggsave(AllPlot, filename="AllPrePost_Avgs.jpeg", device="jpeg", path=paste0(here('Plots')), width = 20, height = 15)
 
 
 ### look at the N:P ratio change between pre 2012 and after
@@ -334,32 +396,68 @@ ggsave(AllPlot, filename="AllPrePost_Avgs.jpeg", device="jpeg", path=paste0(outd
 
 ### plot the concentrations over time  --- all the concentrations by date
 ## colog by the events
-all2$color<-'long-term'
-all2$color[all2$Date>='2021-12-17'&all2$Date<='2022-01-01']<-'2021 event'
-all2$color[all2$Date>='2012-01-18'&all2$Date<='2012-01-24']<-'2012 event'
+all3$color<-'other'
+all3$color[all3$Date>='2021-12-10'&all3$Date<='2022-01-20']<-'2021 event'
+all3$color[all3$Date>='2012-01-01'&all3$Date<='2012-01-30']<-'2012 event'
 
 ##color it by season instead
-all2$color<-'other season'
-all2$color[all2$Date>='2012-01-17'&all2$Date<='2012-12-31']<-'2012/2013'
-all2$color[all2$Date>='2021-12-17'&all2$Date<='2022-01-30']<-'2021'
+# all3$color<-'other season'
+# all3$color[all3$Date>='2012-01-01'&all3$Date<='2012-02-31']<-'2012'
+# all3$color[all3$Date>='2021-12-01'&all3$Date<='2022-01-30']<-'2021'
 
 ##filter out only a few, one of each category
-all2<-all2%>%
-  filter(., variable=='a na_mgl'|variable=='b si_mgl'|variable=='c n+n_mgl')
+# all3<-all3%>%
+#   filter(., variable=='a na_mgl'|variable=='b si_mgl'|variable=='c n+n_mgl')
 
-ConPlot1<-ggplot(all2, aes(y=`concentration (mg/l)`, x=Date)) + 
-  geom_point(aes(color=color, size=3))+
+ConPlot1<-ggplot(all3, aes(y=`concentration (mg/l)`, x=Date)) + 
+  geom_point(aes(color=color), size=3)+
+  # geom_line(linewidth=2, aes(color=color))+
   # geom_line(aes())+
   # geom_smooth()+
-  stat_poly_line(method="lm") +
-  stat_poly_eq(use_label(c("P", "R2")), size=10)+
+  # stat_poly_line(method="lm") +
+  # stat_poly_eq(use_label(c("P", "R2")), size=10)+
   # scale_y_continuous(trans='log10')+
-  facet_wrap(`variable`~ ., scales = "free_y", nrow=3)+
+  facet_grid(`variable`~ ., scales = "free_y")+
   ggtitle('')+
   # theme(axis.text.x = element_text(angle = 90))+
-  theme(text = element_text(size = 50))+
-  theme(legend.position="bottom")
-ggsave(ConPlot1, filename="All_concentration.jpeg", device="jpeg", path=paste0(outdrive, 'Plots'), width = 20, height = 15)
+  theme_bw() +
+  theme(plot.title = element_blank(),
+        axis.text = element_text(size = 20),
+        axis.title = element_text(size = 20),
+        axis.title.x = element_blank(),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 20),
+        legend.text = element_text(size = 16),
+        legend.position="bottom",
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+ggsave(ConPlot1, filename="All_concentration_timeseries.jpeg", device="jpeg", path=here('Plots'), width = 11, height = 11)
+
+#### Box plot of every year samples were taken instead of timeseries
+ConPlot2<-ggplot(all3, aes(y=`concentration (mg/l)`, x=season, group=season, color=color)) + 
+  geom_boxplot(aes(fill=color))+
+  geom_jitter(aes(fill=color),width=0.1, shape=21,size=1, alpha=0.7)+
+  # geom_line(linewidth=2, aes(color=color))+
+  # geom_line(aes())+
+  # geom_smooth()+
+  # stat_poly_line(method="lm") +
+  # stat_poly_eq(use_label(c("P", "R2")), size=10)+
+  # scale_y_continuous(trans='log10')+
+  facet_grid(`variable`~ ., scales = "free_y")+
+  ggtitle('')+
+  # theme(axis.text.x = element_text(angle = 90))+
+  theme_bw() +
+  theme(plot.title = element_blank(),
+        axis.text = element_text(size = 20),
+        axis.title = element_text(size = 20),
+        axis.title.x = element_blank(),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 20),
+        legend.text = element_text(size = 16),
+        legend.position="bottom",
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+ggsave(ConPlot2, filename="All_concentration_boxplot.jpeg", device="jpeg", path=here('Plots'), width = 11, height = 11)
 
 ## avg concentration by season
 all3<-all%>%
@@ -565,12 +663,52 @@ EC_2<-full_join(EC2, EC3)
 EC_2$DateTime<-lubridate::mdy_hm(EC_2$DATE_TIME)
 EC_2<-EC_2%>%dplyr::filter(., CONDUCTIVITY>0)
 
-##plot EC over time for 21-22 season
-EC21<-ggplot(EC_2, aes(x=DateTime, y=CONDUCTIVITY))+geom_point()+geom_line()+
-  ggtitle('Conductivity during 21-22 flow season')+
-  theme(axis.text.x = element_text(angle = 90))+
-  theme(text = element_text(size = 40))
-ggsave(EC21, filename="2021_Crescent_EC.jpeg", device="jpeg", path=paste0(outdrive), width = 25, height = 20)
+##plot EC over time for 2011-2012 season before and after degradation
+EC12<-EC%>%filter(., Date>'2011-11-30'&Date<'2012-02-10')
+vline_date <- as.POSIXct("2012-01-19 00:00:00")
+
+EC12Plot<-ggplot(EC12, aes(x=DATE_TIME, y=CONDUCTIVITY))+geom_line()+
+  geom_vline(xintercept=vline_date, color='red', linewidth=2)+
+  ggtitle('')+
+  # scale_x_continuous(limits = c('2011-12-01 00:00:00', '2012-02-10 00:00:00')) +
+  # scale_x_date(limits = as.Date(c('2011-12-01','2012-02-10')))+
+  theme_bw() +
+  theme(plot.title = element_blank(),
+        axis.text = element_text(size = 20),
+        axis.title = element_text(size = 20),
+        axis.title.x = element_blank(),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 20),
+        legend.text = element_text(size = 16),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+ggsave(EC12Plot, filename="2012CresEC_timeseries.jpeg", device="jpeg", path=here('Plots'), width = 8, height = 4)
+
+
+
+##plot EC over time for 2021-2022 season before and after degradation
+vline_date2 <- as.POSIXct("2021-12-20 00:00:00")
+vline_date3 <- as.POSIXct("2021-12-15 00:00:00")
+
+
+EC21Plot<-ggplot(EC_2, aes(x=DateTime, y=CONDUCTIVITY))+geom_line()+
+  geom_vline(xintercept=vline_date2, color='red', linewidth=2)+
+  geom_vline(xintercept=vline_date3, color='red', linewidth=2)+
+  ggtitle('')+
+  # scale_x_continuous(limits = c('2011-12-01 00:00:00', '2012-02-10 00:00:00')) +
+  # scale_x_date(limits = as.Date(c('2011-12-01','2012-02-10')))+
+  theme_bw() +
+  theme(plot.title = element_blank(),
+        axis.text = element_text(size = 20),
+        axis.title = element_text(size = 20),
+        axis.title.x = element_blank(),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 20),
+        legend.text = element_text(size = 16),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+ggsave(EC21Plot, filename="2021CresEC_timeseries.jpeg", device="jpeg", path=here('Plots'), width = 8, height = 4)
+
 
 
 ######################################################################################################################
@@ -715,35 +853,235 @@ all2<-all1%>%
 all2$DATE_TIME<-lubridate::ymd_hms(all2$DateTime)
 Alldata<-full_join(all2, AllQday, by="Date")
 
-All_data<-Alldata%>%gather(., variable, `concentration (mg/l)`, "na_mgl","k_mgl","mg_mgl","cl_mgl","si_mgl", "ca_mgl", "f_mgl", "li_mgl", "so4_mgl",
+All_data2<-Alldata%>%gather(., variable, `concentration (mg/l)`, "na_mgl","k_mgl","mg_mgl","cl_mgl","si_mgl", "ca_mgl", "f_mgl", "li_mgl", "so4_mgl",
                     "srp_mgl","n+n_mgl","n_nh4_mgl")
 
 library(scales)
+library(ggpmisc)
 ##plot all concentrations over time vs. discharge on log-log scale
-Chemo<-ggplot(All_data, aes(y=`concentration (mg/l)`, x=`q_md`, color=group, group=group)) + 
-                geom_point(size=3)+
-                facet_wrap(`variable`~ .)+
-                # geom_smooth(method="lm")+
-                # geom_line(aes())+
-                # geom_smooth()+
-                stat_poly_line(method="lm") +
-                geom_abline(slope=-1, linetype=3, linewidth=2)+
-                scale_fill_manual(values = friendly_pal("nickel_five"))+
-                theme(panel.background = element_rect(fill = 'white', colour = 'white'))+
-                # stat_poly_eq(use_label(c("eq")), size=10)+
-                # scale_x_continuous(trans='pseudo_log', breaks = c(1, 10, 100, 1000))+
-                # scale_y_continuous(trans='pseudo_log', breaks = c(0.1, 1, 10, 100))+
-                scale_y_continuous(trans='log10', breaks = c(0.1, 1, 10, 100))+
-                scale_x_continuous(trans='log10', labels = comma)+
-                # xlim(0, 1000)+
-                # ylim(0, 100)+
-                ggtitle('')+
-                # theme(axis.text.x = element_text(angle = 90))+
-                theme(text = element_text(size = 50))+
-                theme(legend.position="bottom")
-ggsave(Chemo, filename="Chemostasis_2012_noslope.jpeg", device="jpeg", path=paste0(outdrive, 'Plots'), width = 25, height = 20)
+Chemo <- ggplot(All_data2, aes(y=`concentration (mg/l)`, x=`q_md`, color=group, group=group)) + 
+  geom_point(size=1)+
+  facet_wrap(`variable`~ .)+
+  stat_poly_line(method="lm") +
+  geom_abline(slope=-1, linetype=3, linewidth=2)+
+  scale_color_manual(values = c("a pre 2012" = friendly_pal("ito_seven")[1],   # orange
+                                "b post 2012" = friendly_pal("ito_seven")[3])) + # blue
+  scale_y_continuous(trans='log10', breaks = c(0.1, 1, 10, 100))+
+  scale_x_continuous(trans='log10', labels = comma)+
+  ggtitle('')+
+  theme_bw() +
+  theme(plot.title = element_blank(),
+        axis.text = element_text(size = 13),
+        axis.title = element_text(size = 20),
+        axis.title.x = element_blank(),
+        strip.text = element_text(size = 16),
+        legend.text = element_text(size = 16),
+        legend.position="bottom")
 
-### find breakpoints of chemostasis?
+ggsave(Chemo, filename="Chemostasis_2012.jpeg", device="jpeg", 
+       path=here('Plots'))
+
+##### write model that estimates the pre and post 2012 a and b values, and tests if they are statistically different
+#### Need to do a seperate model for each parameter -- "na_mgl","k_mgl","mg_mgl","cl_mgl","si_mgl", "ca_mgl", 
+ ####"f_mgl", "li_mgl", "so4_mgl", "srp_mgl","n+n_mgl","n_nh4_mgl" 
+Alldata$group<-as.factor(Alldata$group)
+Alldata<-Alldata%>%filter(., q_md>0, is.finite(q_md))
+# Alldata$logK<-log(Alldata$k_mgl)
+# Alldata$logMg<-log(Alldata$mg_mgl)
+# Alldata$logCl<-log(Alldata$cl_mgl)
+# Alldata$logSi<-log(Alldata$si_mgl)
+# Alldata$logCa<-log(Alldata$ca_mgl)
+# Alldata$logF<-log(Alldata$f_mgl)
+# Alldata$logLi<-log(Alldata$li_mgl)
+# Alldata$logSO4<-log(Alldata$so4_mgl)
+# Alldata$logSRP<-log(Alldata$srp_mgl)
+# Alldata$logN<-log(Alldata$`n+n_mgl`)
+# Alldata$logNH4<-log(Alldata$n_nh4_mgl)
+# Alldata$logNa<-log(Alldata$na_mgl)
+# Alldata$logQ<-log(Alldata$q_md)
+
+library(dplyr)
+library(emmeans)
+library(tibble)
+
+#### Automated function to pull pre and post A and b values for each analyte, also use emmeans to compute 
+### 95% confidence interavls (high and low) and the p-value of the change in slope and intercept from pre and post
+cq_table_one <- function(data, conc, q = "Q", period = "period",
+                         conf_level = 0.95, na_action = na.omit) {
+  
+  stopifnot(is.character(conc), length(conc) == 1)
+  stopifnot(is.character(q), length(q) == 1)
+  stopifnot(is.character(period), length(period) == 1)
+  
+  df <- data %>%
+    transmute(
+      .conc   = .data[[conc]],
+      .q      = .data[[q]],
+      .period = factor(.data[[period]])
+    ) %>%
+    filter(is.finite(.conc), is.finite(.q), !is.na(.period), .conc > 0, .q > 0) %>%
+    mutate(
+      logC = log(.conc),
+      logQ = log(.q)
+    )
+  
+  if (nrow(df) < 3) stop("Too few rows after filtering.")
+  if (nlevels(df$.period) != 2) stop("`period` must have exactly 2 levels.")
+  
+  # Keep baseline as first level (you can relevel outside before calling)
+  df$.period <- relevel(df$.period, ref = levels(df$.period)[1])
+  
+  m <- lm(logC ~ .period * logQ, data = df, na.action = na_action)
+  
+  b_ci <- confint(emtrends(m, ~ .period, var = "logQ"), level = conf_level) %>%
+    as.data.frame()
+  # Tests: is slope different from 0?
+  b_test <- summary(emtrends(m, ~ .period, var = "logQ"), infer = c(TRUE, TRUE)) %>%
+    as.data.frame()
+  
+  loga_ci <- confint(emmeans(m, ~ .period, at = list(logQ = 0)), level = conf_level) %>%
+    as.data.frame()
+  
+  p_slope <- as.data.frame(pairs(emtrends(m, ~ .period, var = "logQ")))$p.value[1]
+  p_loga  <- as.data.frame(pairs(emmeans(m, ~ .period, at = list(logQ = 0))))$p.value[1]
+  
+  levs <- levels(df$.period)
+  pre  <- levs[1]
+  post <- levs[2]
+  p_b0_pre  <- b_test %>% filter(.period == pre)  %>% pull(p.value) %>% .[1]
+  p_b0_post <- b_test %>% filter(.period == post) %>% pull(p.value) %>% .[1]
+  
+  get1 <- function(d, per, colname) d %>% filter(.period == per) %>% pull(.data[[colname]]) %>% .[1]
+  
+  b_pre      <- get1(b_ci, pre,  "logQ.trend")
+  b_pre_low  <- get1(b_ci, pre,  "lower.CL")
+  b_pre_high <- get1(b_ci, pre,  "upper.CL")
+  
+  b_post      <- get1(b_ci, post, "logQ.trend")
+  b_post_low  <- get1(b_ci, post, "lower.CL")
+  b_post_high <- get1(b_ci, post, "upper.CL")
+  
+  loga_pre      <- get1(loga_ci, pre,  "emmean")
+  loga_pre_low  <- get1(loga_ci, pre,  "lower.CL")
+  loga_pre_high <- get1(loga_ci, pre,  "upper.CL")
+  
+  loga_post      <- get1(loga_ci, post, "emmean")
+  loga_post_low  <- get1(loga_ci, post, "lower.CL")
+  loga_post_high <- get1(loga_ci, post, "upper.CL")
+  
+  tibble(
+    analyte = conc,
+    period_pre  = pre,
+    period_post = post,
+    n_total = nrow(df),
+    n_pre   = sum(df$.period == pre),
+    n_post  = sum(df$.period == post),
+    
+    a_pre      = exp(loga_pre),
+    a_pre_low  = exp(loga_pre_low),
+    a_pre_high = exp(loga_pre_high),
+    
+    b_pre      = b_pre,
+    b_pre_low  = b_pre_low,
+    b_pre_high = b_pre_high,
+    
+    a_post      = exp(loga_post),
+    a_post_low  = exp(loga_post_low),
+    a_post_high = exp(loga_post_high),
+    
+    b_post      = b_post,
+    b_post_low  = b_post_low,
+    b_post_high = b_post_high,
+    
+    p_slope_change     = p_slope,
+    p_intercept_change = p_loga,
+    p_b_pre_neq0  = p_b0_pre,
+    p_b_post_neq0 = p_b0_post,
+    
+  )
+}
+
+
+analytes <- c("na_mgl", "k_mgl", "mg_mgl", "cl_mgl", "si_mgl" , "ca_mgl", "f_mgl" , "li_mgl", "so4_mgl",
+              "srp_mgl", "n+n_mgl", "n_nh4_mgl")  
+
+tab_all <- analytes %>%
+  set_names() %>%
+  map_dfr(~ cq_table_one(Alldata, conc = .x, q = "q_md", period = "group"))
+
+tab_all
+
+#### write out results into nice usable word document
+library(flextable)
+library(officer)
+library(stringr)
+library(scales)
+
+# Create a publication-ready version of tab_all 
+tab_word <- tab_all %>%
+  mutate(
+    # format a and b as "estimate [low, high]"
+    a_pre_CI  = sprintf("%.3g [%.3g, %.3g]", a_pre,  a_pre_low,  a_pre_high),
+    b_pre_CI  = sprintf("%.3f [%.3f, %.3f]", b_pre,  b_pre_low,  b_pre_high),
+    a_post_CI = sprintf("%.3g [%.3g, %.3g]", a_post, a_post_low, a_post_high),
+    b_post_CI = sprintf("%.3f [%.3f, %.3f]", b_post, b_post_low, b_post_high),
+    
+    # p-value formatting (e.g., "<0.001")
+    p_slope_change_fmt = ifelse(p_slope_change < 0.001, "<0.001", sprintf("%.3f", p_slope_change)),
+    p_intercept_change_fmt = ifelse(p_intercept_change < 0.001, "<0.001", sprintf("%.3f", p_intercept_change)),
+    p_b_pre_fmt  = ifelse(p_b_pre_neq0 < 0.001, "<0.001", sprintf("%.3f", p_b_pre_neq0)),
+    p_b_post_fmt = ifelse(p_b_post_neq0 < 0.001, "<0.001", sprintf("%.3f", p_b_post_neq0))
+  ) %>%
+  select(
+    Analyte = analyte,
+    `n (pre)` = n_pre,
+    `n (post)` = n_post,
+    `a (pre) [95% CI]` = a_pre_CI,
+    `b (pre) [95% CI]` = b_pre_CI,
+    `p (b≠0, pre)` = p_b_pre_fmt,
+    `a (post) [95% CI]` = a_post_CI,
+    `b (post) [95% CI]` = b_post_CI,
+    `p (b≠0, post)` = p_b_post_fmt,
+    `p (Δb)` = p_slope_change_fmt,
+    `p (Δlog(a))` = p_intercept_change_fmt
+  )
+
+# Build a nice flextable 
+ft <- flextable(tab_word)
+ft <- theme_booktabs(ft)
+ft <- autofit(ft)
+ft <- align(ft, align = "center", part = "header")
+ft <- align(ft, j = 1, align = "left", part = "body")  # left-align analyte names
+ft <- fontsize(ft, size = 10, part = "all")
+ft <- padding(ft, padding = 4, part = "all")
+ft <- set_table_properties(ft, layout = "autofit")
+
+# slightly wider CI columns (often helps in Word)
+ft <- width(ft, j = 4:7, width = 1.4)
+
+# Write to Word (.docx)
+doc <- read_docx()
+
+doc <- body_add_par(doc, "CQ_Parameter_Estimates_by_Analyte", style = "heading 1")
+
+doc <- body_add_par(
+  doc,
+  paste0(
+    "Table. Fitted parameters for log–log concentration–discharge relationships (C = a Q^b). ",
+    "Values are point estimates with 95% confidence intervals. ",
+    "p (Δb) tests the difference in slopes between periods; p (Δlog(a)) tests the difference in intercepts on the log scale."
+  ),
+  style = "Normal"
+)
+
+doc <- body_add_flextable(doc, ft)
+doc <- body_add_par(doc, "", style = "Normal")
+
+print(doc, target = "CQ_table.docx")
+# This writes CQ_table.docx to your working directory
+
+
+### find breakpoints of chemostasis
 library(breakpoint)
 
 ### Plot the CVC/CVQ
