@@ -238,7 +238,7 @@ all1<-full_join(all1, Cres5)
 all1$year<-lubridate::year(all1$Date)
 ## add in groups but make another copy of it before the groups
 all2<-all1
-all2$group<-'all'
+# all2$group<-'all'
 
 all1$group[all1$year<2012]<-'a pre 2012'
 all1$group[all1$year>=2012]<-'b post 2012'
@@ -267,7 +267,7 @@ AllPlot<-ggplot(all3, aes(y=`concentration (mg/l)`, x=group, fill=group)) +
   theme(text = element_text(size = 50),
         axis.text.x = element_text(size = 35),
         legend.position="")
-ggsave(AllPlot, filename="2012_CresChem_Boxplot.jpeg", device="jpeg", path=paste0(here('Plots')), width = 26, height = 15)
+ggsave(AllPlot, filename="2012_CresChem_Boxplot_PreandPost.jpeg", device="jpeg", path=paste0(here('Plots')), width = 26, height = 15)
 
 ####### Just plot 2012 season when the degradation occured 
 Plot12<-ggplot(all3, aes(y=`concentration (mg/l)`, x=Date)) + 
@@ -305,7 +305,8 @@ library(rempsyc)
 # sjPlot:: tab_model(K_t)
 
 ##want to compare the pre-2012, the post 2012, and the all time, so put them all together here
-alldata<-full_join(all1, all2)
+# alldata<-full_join(all1, all2)
+alldata<-all1
 
 ## to do them together
 alldata<-alldata%>%
@@ -359,8 +360,15 @@ Alltable3<-nice_table(test3)
 # Save in Word
 flextable::save_as_docx(Alltable3, path = paste0(outdrive, "2012pre_post_t-tests.docx"))
 
+### just for plotting remove outliers of Li and N
+alldata$n_mgl[alldata$n_mgl>0.25]<-NA
+## two outliers
+alldata$li_mgl[alldata$li_mgl>0.008]<-NA
+## three outliers
+
 alldata<-alldata%>% gather("variable", "concentration mg/L", "na_mgl", "k_mgl","mg_mgl", "f_mgl", "cl_mgl","si_mgl","ca_mgl","li_mgl","so4_mgl",
                            "srp_mgl","n_mgl","n_nh4_mgl")
+
 
 ## Plot a bar chart with the averages of all 3 populations together
 AllPlot<-ggplot(alldata, aes(y=`concentration mg/L`, x=group, fill=group)) + 
@@ -376,7 +384,7 @@ AllPlot<-ggplot(alldata, aes(y=`concentration mg/L`, x=group, fill=group)) +
   theme(axis.text.x = element_text(angle = 90),
         text = element_text(size = 50),
         legend.position="")
-ggsave(AllPlot, filename="AllPrePost_Avgs.jpeg", device="jpeg", path=paste0(here('Plots')), width = 20, height = 15)
+ggsave(AllPlot, filename="AllPrePost_Avgs_PrePost.jpeg", device="jpeg", path=paste0(here('Plots')), width = 20, height = 15)
 
 
 ### look at the N:P ratio change between pre 2012 and after
@@ -865,7 +873,7 @@ Chemo <- ggplot(All_data2, aes(y=`concentration (mg/l)`, x=`q_md`, color=group, 
   stat_poly_line(method="lm") +
   geom_abline(slope=-1, linetype=3, linewidth=2)+
   scale_color_manual(values = c("a pre 2012" = friendly_pal("ito_seven")[1],   # orange
-                                "b post 2012" = friendly_pal("ito_seven")[3])) + # blue
+                                "b post 2012" = friendly_pal("ito_seven")[2])) + # blue
   scale_y_continuous(trans='log10', breaks = c(0.1, 1, 10, 100))+
   scale_x_continuous(trans='log10', labels = comma)+
   ggtitle('')+
