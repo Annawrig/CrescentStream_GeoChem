@@ -132,20 +132,42 @@ library(ggpubfigs)
 # using the "ito_seven" color palette and theme_big_simple()
 ggplot(mtcars, aes(factor(carb), fill=factor(cyl))) + geom_bar() + scale_fill_manual(values = friendly_pal("ito_seven")) + theme_big_simple()
 
-AvgPlot<-ggplot(Cres4, aes(y=`concentration mg/L`, x=Stream, color=Stream)) + 
-  geom_boxplot(size=2)+
-  # geom_bar(stat="identity", position="dodge2")+
-  ##geom_errorbar(aes(color=season))+
-  facet_wrap(`variable`~ ., scales = "free_y")+
-  scale_color_viridis_d()+
-  # theme(panel.background = element_rect(fill = 'white', colour = 'white'))+
-  ggtitle('')+
-  xlab('')+
-  theme_bw()+
+# Map raw variable codes -> plotmath expressions
+var_labels <- c(
+  `Na mg/L`    = "Na^{'+'}",
+  `K mg/L`     = "K^{'+'}",
+  `Mg mg/L`    = "Mg^{'2+'}",
+  `F mg/L`     = "F^{'-'}",
+  `Cl mg/L`    = "Cl^{'-'}",
+  `Si mg/L`    = "Si",
+  `Ca mg/L`    = "Ca^{'2+'}",
+  `Li mg/L`    = "Li^{'+'}",
+  `SO4 mg/L`   = "SO[4]^{'2-'}",
+  `SRP mg/L`   = "SRP",
+  `N+N mg/L of N`     = "N+N",
+  `NH4 mg/L N` = "NH[4]^{'+'}"   # renders as NH4+
+)
+# Order factor levels alphabetically by the plain-text version of the label
+plain_labels <- gsub("\\^|\\{|\\}|\\[|\\]|\\*|'", "", var_labels)
+ordered_vars <- names(var_labels)[order(plain_labels)]
+
+Cres4$variable <- factor(Cres4$variable, levels = ordered_vars)
+
+AvgPlot <- ggplot(Cres4, aes(y = `concentration mg/L`, x = Stream, color = Stream)) + 
+  geom_boxplot(size = 2) +
+  facet_wrap(~ variable, scales = "free_y",
+             labeller = as_labeller(var_labels, default = label_parsed)) +
+  scale_color_viridis_d() +
+  ggtitle('') +
+  ylab('concentration (mg/L)')+
+  xlab('') +
+  theme_bw() +
   theme(axis.text.x = element_text(angle = 90),
         text = element_text(size = 50),
-        legend.position="")
-ggsave(AvgPlot, filename="Avg_CresChem.jpeg", device="jpeg", path=paste0(here('Plots')), width = 25, height = 20)
+        legend.position = "")
+
+ggsave(AvgPlot, filename = "Avg_CresChem.jpeg", device = "jpeg",
+       path = paste0(here('Plots')), width = 25, height = 20)
 
 ## do a t-test to see if the chemistry between the 3 streams are actually different
 library(tatest)
@@ -223,7 +245,7 @@ all1$`n+n_ugl`=(all1$n_no2_ugl+all1$n_no3_ugl)
 ##add in the newest ion, nut and doc data
 Cres5<-Cres%>%
   dplyr::rename(., na_mgl="Na mg/L", k_mgl="K mg/L",mg_mgl="Mg mg/L",cl_mgl="Cl mg/L",ca_mgl="Ca mg/L", li_mgl="Li mg/L", so4_mgl="SO4 mg/L",
-                srp_mgl="SRP mg/L",`n+n_mgl`="N+N mg/L of N", si_mgl="Si mg/L", season="Season")
+                srp_mgl="SRP mg/L",`n+n_mgl`="N+N mg/L of N", si_mgl="Si mg/L", n_nh4_mgl="NH4 mg/L N", f_mgl="F mg/L",season="Season")
 Cres5$season<-as.numeric(Cres5$season)
 Cres5<-Cres5%>%
   dplyr::filter(., Stream=='Crescent')
@@ -244,8 +266,8 @@ all1$group[all1$year<2012]<-'a pre 2012'
 all1$group[all1$year>=2012]<-'b post 2012'
 
 all<-all1%>%
-  dplyr::select(., 'Stream', 'DateTime', 'Date', 'year', 'season', 'group', "na_mgl","k_mgl","mg_mgl", "cl_mgl","si_mgl", "ca_mgl", "li_mgl", "so4_mgl",
-                "srp_mgl","n+n_mgl")%>%
+  dplyr::select(., 'Stream', 'DateTime', 'Date', 'year', 'season', 'group', "na_mgl","n_nh4_mgl", "k_mgl","mg_mgl", "cl_mgl","si_mgl", "ca_mgl", "li_mgl", "so4_mgl",
+                "srp_mgl","n+n_mgl", "f_mgl")%>%
   dplyr::filter(., !is.na(group))
 ## remove no3 outliers 
 all<-all%>%
@@ -253,9 +275,9 @@ all<-all%>%
 all$`n+n_mgl`[all$`n+n_mgl`<0]=0
 
 all3<-all%>%gather(., variable, `concentration (mg/l)`, "na_mgl","k_mgl","mg_mgl","cl_mgl","si_mgl", "ca_mgl", "li_mgl",
-                    "srp_mgl","n+n_mgl", "so4_mgl")
+                    "srp_mgl","n+n_mgl", "so4_mgl", "n_nh4_mgl", "f_mgl")
 
-###Box plot
+###### Box plot
 AllPlot<-ggplot(all3, aes(y=`concentration (mg/l)`, x=group, fill=group)) + 
   geom_boxplot(lwd=3)+
   facet_wrap(`variable`~ ., scales = "free_y")+
@@ -367,24 +389,48 @@ alldata$li_mgl[alldata$li_mgl>0.008]<-NA
 ## three outliers
 
 alldata<-alldata%>% gather("variable", "concentration mg/L", "na_mgl", "k_mgl","mg_mgl", "f_mgl", "cl_mgl","si_mgl","ca_mgl","li_mgl","so4_mgl",
-                           "srp_mgl","n_mgl","n_nh4_mgl")
+                           "srp_mgl","n_mgl","n_nh4_mgl", "f_mgl")
 
+############### FOR MANUSCRIPT
+library(here)
 
-## Plot a bar chart with the averages of all 3 populations together
-AllPlot<-ggplot(alldata, aes(y=`concentration mg/L`, x=group, fill=group)) + 
-  # geom_bar(stat="identity", position="dodge2")+
-  geom_boxplot(lwd=3)+
-  facet_wrap(`variable`~ ., scales = "free_y")+
-  ##geom_errorbar(aes(color=season))+
-  facet_wrap(`variable`~ ., scales = "free_y")+
-  scale_fill_manual(values = friendly_pal("ito_seven"))+
-  # theme(panel.background = element_rect(fill = 'white', colour = 'white'))+
-  ggtitle('')+
-  theme_bw()+
+# Map raw variable codes -> plotmath expressions
+var_labels <- c(
+  na_mgl    = "Na^{'+'}",
+  k_mgl     = "K^{'+'}",
+  mg_mgl    = "Mg^{'2+'}",
+  f_mgl     = "F^{'-'}",
+  cl_mgl    = "Cl^{'-'}",
+  si_mgl    = "Si",
+  ca_mgl    = "Ca^{'2+'}",
+  li_mgl    = "Li^{'+'}",
+  so4_mgl   = "SO[4]^{'2-'}",
+  srp_mgl   = "SRP",
+  n_mgl     = "N+N",
+  n_nh4_mgl = "NH[4]^{'+'}"   # renders as NH4+
+)
+# Order factor levels alphabetically by the plain-text version of the label
+plain_labels <- gsub("\\^|\\{|\\}|\\[|\\]|\\*|'", "", var_labels)
+ordered_vars <- names(var_labels)[order(plain_labels)]
+
+alldata$variable <- factor(alldata$variable, levels = ordered_vars)
+
+AllPlot <- ggplot(alldata, aes(y = `concentration mg/L`, x = group, fill = group)) +
+  geom_boxplot(lwd = 3) +
+  facet_wrap(~ variable, scales = "free_y",
+             labeller = as_labeller(var_labels, default = label_parsed)) +
+  scale_fill_manual(values = friendly_pal("ito_seven")) +
+  ggtitle('') +
+  ylab('concentration (mg/L)')+
+  xlab('')+
+  theme_bw() +
   theme(axis.text.x = element_text(angle = 90),
         text = element_text(size = 50),
-        legend.position="")
-ggsave(AllPlot, filename="AllPrePost_Avgs_PrePost.jpeg", device="jpeg", path=paste0(here('Plots')), width = 20, height = 15)
+        legend.position = "")
+
+ggsave(AllPlot, filename = "AllPrePost_Avgs_PrePost.jpeg", device = "jpeg",
+       path = paste0(here('Plots')), width = 20, height = 15)
+
 
 
 ### look at the N:P ratio change between pre 2012 and after
@@ -417,17 +463,39 @@ all3$color[all3$Date>='2012-01-01'&all3$Date<='2012-01-30']<-'2012 event'
 # all3<-all3%>%
 #   filter(., variable=='a na_mgl'|variable=='b si_mgl'|variable=='c n+n_mgl')
 
-ConPlot1<-ggplot(all3, aes(y=`concentration (mg/l)`, x=Date)) + 
-  geom_point(aes(color=color), size=3)+
-  # geom_line(linewidth=2, aes(color=color))+
-  # geom_line(aes())+
-  # geom_smooth()+
-  # stat_poly_line(method="lm") +
-  # stat_poly_eq(use_label(c("P", "R2")), size=10)+
-  # scale_y_continuous(trans='log10')+
-  facet_grid(`variable`~ ., scales = "free_y")+
-  ggtitle('')+
-  # theme(axis.text.x = element_text(angle = 90))+
+
+########### For manuscript -- supplemental
+# Reuse the same label mapping and ordering from before
+# (var_labels and ordered_vars must already be defined/run)
+
+# Map raw variable codes -> plotmath expressions
+var_labels <- c(
+  na_mgl    = "Na^{'+'}",
+  k_mgl     = "K^{'+'}",
+  mg_mgl    = "Mg^{'2+'}",
+  f_mgl     = "F^{'-'}",
+  cl_mgl    = "Cl^{'-'}",
+  si_mgl    = "Si",
+  ca_mgl    = "Ca^{'2+'}",
+  li_mgl    = "Li^{'+'}",
+  so4_mgl   = "SO[4]^{'2-'}",
+  srp_mgl   = "SRP",
+  `n+n_mgl`     = "N+N",
+  n_nh4_mgl = "NH[4]^{'+'}"   # renders as NH4+
+)
+# Order factor levels alphabetically by the plain-text version of the label
+plain_labels <- gsub("\\^|\\{|\\}|\\[|\\]|\\*|'", "", var_labels)
+ordered_vars <- names(var_labels)[order(plain_labels)]
+
+all3$variable <- factor(all3$variable, levels = ordered_vars)
+
+ConPlot1 <- ggplot(all3, aes(y = `concentration (mg/l)`, x = Date)) +
+  geom_point(aes(color = color), size = 3) +
+  facet_grid(variable ~ ., scales = "free_y",
+             labeller = labeller(variable = as_labeller(var_labels, default = label_parsed))) +
+  ggtitle('') +
+  ylab('concentration (mg/L)')+
+  xlab('')+
   theme_bw() +
   theme(plot.title = element_blank(),
         axis.text = element_text(size = 20),
@@ -436,10 +504,12 @@ ConPlot1<-ggplot(all3, aes(y=`concentration (mg/l)`, x=Date)) +
         strip.background = element_blank(),
         strip.text = element_text(size = 20),
         legend.text = element_text(size = 16),
-        legend.position="bottom",
+        legend.position = "bottom",
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank())
-ggsave(ConPlot1, filename="All_concentration_timeseries.jpeg", device="jpeg", path=here('Plots'), width = 11, height = 11)
+
+ggsave(ConPlot1, filename = "All_concentration_timeseries.jpeg", device = "jpeg",
+       path = here('Plots'), width = 11, height = 11)
 
 #### Box plot of every year samples were taken instead of timeseries
 ConPlot2<-ggplot(all3, aes(y=`concentration (mg/l)`, x=season, group=season, color=color)) + 
@@ -451,8 +521,11 @@ ConPlot2<-ggplot(all3, aes(y=`concentration (mg/l)`, x=season, group=season, col
   # stat_poly_line(method="lm") +
   # stat_poly_eq(use_label(c("P", "R2")), size=10)+
   # scale_y_continuous(trans='log10')+
-  facet_grid(`variable`~ ., scales = "free_y")+
-  ggtitle('')+
+  facet_grid(variable ~ ., scales = "free_y",
+             labeller = labeller(variable = as_labeller(var_labels, default = label_parsed))) +
+  ggtitle('') +
+  ylab('concentration (mg/L)')+
+  xlab('')+
   # theme(axis.text.x = element_text(angle = 90))+
   theme_bw() +
   theme(plot.title = element_blank(),
@@ -802,11 +875,39 @@ ggsave(Qplot, filename="Crescent_seasonalQ.jpeg", device="jpeg", path=paste0(out
 AllQseason$group[AllQseason$season<2012]<-'a pre 2012'
 AllQseason$group[AllQseason$season>=2012]<-'b post 2012'
 
-Qplot2<-ggplot(AllQseason, aes(x=group, y=Qtot_m3, color=group))+
-  geom_boxplot(linewidth=3)+
-  ggtitle('')+
-  ylab(~Total~Season~Discharge~(m^3))+
-  xlab('')+
+Qplot2 <- ggplot(AllQseason, aes(x = group, y = Qtot_m3, color = group)) +
+  geom_boxplot(linewidth = 3) +
+  scale_color_manual(values = c("a pre 2012" = friendly_pal("ito_seven")[1],   # orange
+                                "b post 2012" = friendly_pal("ito_seven")[2])) + # blue
+  ggtitle('') +
+  ylab(~Total~Season~Discharge~(m^3)) +
+  xlab('') +
+  theme_minimal() +
+  theme(plot.title = element_blank(),
+        axis.text = element_text(size = 45),
+        axis.title = element_text(size = 45),
+        axis.text.x = element_text(angle = 90),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 20),
+        legend.position = "none",
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        text = element_text(size = 45))
+
+ggsave(Qplot2, filename = "Crescent_2012Q_boxplot.jpeg", device = "jpeg", path = here('Plots/'), width = 25, height = 25)
+
+##Find the average seasonal discharge before and after 2012
+QAvg<-AllQseason%>%
+  group_by(group)%>%
+  summarise(., Avg_Qtot=mean(Qtot_m3, na.rm=TRUE))
+
+Qplot2 <- ggplot(QAvg, aes(x = group, y = Avg_Qtot, fill = group)) +
+  geom_bar(stat = "identity", position = "dodge2") +
+  scale_fill_manual(values = c("a pre 2012" = friendly_pal("ito_seven")[1],   # orange
+                               "b post 2012" = friendly_pal("ito_seven")[2])) + # blue
+  ggtitle('Pre- and Post-2012 Average Seasonal Discharge') +
+  ylab('Avg Total Discharge (l)') +
+  xlab('') +
   theme_minimal()+
   theme(plot.title = element_blank(),
         axis.text = element_text(size = 45),
@@ -819,28 +920,11 @@ Qplot2<-ggplot(AllQseason, aes(x=group, y=Qtot_m3, color=group))+
         # legend.text = element_text(size = 16),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
-        text = element_text(size = 45))
-ggsave(Qplot2, filename="Crescent_2012Q_boxplot.jpeg", device="jpeg", path=paste0(outdrive, 'Plots/'), width = 25, height = 25)
+        text = element_text(size = 45))+
+  theme(legend.position = "bottom")
 
+ggsave(Qplot2, filename = "Crescent_2012Q.jpeg", device = "jpeg", path = here('Plots/'), width = 25, height = 25)
 
-##Find the average seasonal discharge before and after 2012
-QAvg<-AllQseason%>%
-  group_by(group)%>%
-  summarise(., Avg_Qtot=mean(Qtot_m3, na.rm=TRUE))
-
-Qplot2<-ggplot(QAvg, aes(x=group, y=Avg_Qtot))+
-  geom_bar(stat="identity", position="dodge2", color="blue", fill="lightblue")+
-  # stat_poly_line(method="lm") +
-  # stat_poly_eq(use_label(c("p")), size=10)+
-  # geom_errorbar( aes(x=group, ymin=min, ymax=max), color='black')+
-  # facet_wrap(`MAT.TYPE`~ ., scales = "free_y")+
-  ggtitle('Pre- and Post-2012 Average Seasonal Discharge')+
-  ylab('Avg Total Discharge (l)')+
-  xlab('')+
-  theme(axis.text.x = element_text(angle = 90))+
-  theme(text = element_text(size = 45))+
-  theme(legend.position="bottom")
-ggsave(Qplot2, filename="Crescent_2012Q.jpeg", device="jpeg", path=paste0(outdrive, 'Plots/'), width = 25, height = 25)
 
 ## t-test on Avg Seasonal Discharge
 Qttest<-t.test(Qtot_seas ~ group, data =AllQseason )
@@ -866,17 +950,25 @@ All_data2<-Alldata%>%gather(., variable, `concentration (mg/l)`, "na_mgl","k_mgl
 
 library(scales)
 library(ggpmisc)
+############# FOR MANUSCRIPT 
 ##plot all concentrations over time vs. discharge on log-log scale
-Chemo <- ggplot(All_data2, aes(y=`concentration (mg/l)`, x=`q_md`, color=group, group=group)) + 
-  geom_point(size=1)+
-  facet_wrap(`variable`~ .)+
-  stat_poly_line(method="lm") +
-  geom_abline(slope=-1, linetype=3, linewidth=2)+
+# Reuse the same label mapping and ordering from before
+# (var_labels and ordered_vars must already be defined/run)
+
+All_data2$variable <- factor(All_data2$variable, levels = ordered_vars)
+
+Chemo <- ggplot(All_data2, aes(y = `concentration (mg/l)`, x = `q_md`, color = group, group = group)) + 
+  geom_point(size = 1) +
+  facet_wrap(~ variable, labeller = as_labeller(var_labels, default = label_parsed)) +
+  stat_poly_line(method = "lm") +
+  geom_abline(slope = -1, linetype = 3, linewidth = 2) +
   scale_color_manual(values = c("a pre 2012" = friendly_pal("ito_seven")[1],   # orange
                                 "b post 2012" = friendly_pal("ito_seven")[2])) + # blue
-  scale_y_continuous(trans='log10', breaks = c(0.1, 1, 10, 100))+
-  scale_x_continuous(trans='log10', labels = comma)+
-  ggtitle('')+
+  scale_y_continuous(trans = 'log10', breaks = c(0.1, 1, 10, 100)) +
+  scale_x_continuous(trans = 'log10', labels = comma) +
+  ggtitle('') +
+  ylab('concentration (mg/L)')+
+  xlab('discharge (m/d)')+
   theme_bw() +
   theme(plot.title = element_blank(),
         axis.text = element_text(size = 13),
@@ -884,10 +976,11 @@ Chemo <- ggplot(All_data2, aes(y=`concentration (mg/l)`, x=`q_md`, color=group, 
         axis.title.x = element_blank(),
         strip.text = element_text(size = 16),
         legend.text = element_text(size = 16),
-        legend.position="bottom")
+        legend.position = "bottom")
 
-ggsave(Chemo, filename="Chemostasis_2012.jpeg", device="jpeg", 
-       path=here('Plots'))
+ggsave(Chemo, filename = "Chemostasis_2012.jpeg", device = "jpeg", 
+       path = here('Plots'))
+
 
 ##### write model that estimates the pre and post 2012 a and b values, and tests if they are statistically different
 #### Need to do a seperate model for each parameter -- "na_mgl","k_mgl","mg_mgl","cl_mgl","si_mgl", "ca_mgl", 
@@ -1009,13 +1102,41 @@ cq_table_one <- function(data, conc, q = "Q", period = "period",
   )
 }
 
+# 
+# analytes <- c("na_mgl", "k_mgl", "mg_mgl", "cl_mgl", "si_mgl" , "ca_mgl", "f_mgl" , "li_mgl", "so4_mgl",
+#               "srp_mgl", "n+n_mgl", "n_nh4_mgl")  
+# Unicode version of the same labels, for use in Word/flextable output
+var_labels_word <- c(
+  na_mgl    = "Na\u207A",
+  k_mgl     = "K\u207A",
+  mg_mgl    = "Mg\u00B2\u207A",
+  f_mgl     = "F\u207B",
+  cl_mgl    = "Cl\u207B",
+  si_mgl    = "Si",
+  ca_mgl    = "Ca\u00B2\u207A",
+  li_mgl    = "Li\u207A",
+  so4_mgl   = "SO\u2084\u00B2\u207B",
+  srp_mgl   = "SRP",
+  `n+n_mgl`     = "N+N",
+  n_nh4_mgl = "NH\u2084\u207A"
+)
 
-analytes <- c("na_mgl", "k_mgl", "mg_mgl", "cl_mgl", "si_mgl" , "ca_mgl", "f_mgl" , "li_mgl", "so4_mgl",
-              "srp_mgl", "n+n_mgl", "n_nh4_mgl")  
+# Use the SAME alphabetical order as the figures
+analytes <- ordered_vars
 
 tab_all <- analytes %>%
   set_names() %>%
   map_dfr(~ cq_table_one(Alldata, conc = .x, q = "q_md", period = "group"))
+
+# Lock in figure order, then swap in the nice display labels
+tab_all <- tab_all %>%
+  mutate(analyte = factor(analyte, levels = ordered_vars)) %>%
+  arrange(analyte) %>%
+  mutate(analyte = var_labels_word[as.character(analyte)])
+
+# tab_all <- analytes %>%
+#   set_names() %>%
+#   map_dfr(~ cq_table_one(Alldata, conc = .x, q = "q_md", period = "group"))
 
 tab_all
 
