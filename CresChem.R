@@ -754,6 +754,7 @@ EC12Plot<-ggplot(EC12, aes(x=DATE_TIME, y=CONDUCTIVITY))+geom_line()+
   # scale_x_continuous(limits = c('2011-12-01 00:00:00', '2012-02-10 00:00:00')) +
   # scale_x_date(limits = as.Date(c('2011-12-01','2012-02-10')))+
   theme_bw() +
+  ylab('electrical conductivity (μS/cm)')+
   theme(plot.title = element_blank(),
         axis.text = element_text(size = 20),
         axis.title = element_text(size = 20),
@@ -779,6 +780,7 @@ EC21Plot<-ggplot(EC_2, aes(x=DateTime, y=CONDUCTIVITY))+geom_line()+
   # scale_x_continuous(limits = c('2011-12-01 00:00:00', '2012-02-10 00:00:00')) +
   # scale_x_date(limits = as.Date(c('2011-12-01','2012-02-10')))+
   theme_bw() +
+  ylab('electrical conductivity (μS/cm)')+
   theme(plot.title = element_blank(),
         axis.text = element_text(size = 20),
         axis.title = element_text(size = 20),
@@ -852,24 +854,23 @@ Qplot<-ggplot(AllQseason, aes(x=season, y=Qtot_m3))+
   # geom_errorbar( aes(x=group, ymin=min, ymax=max), color='black')+
   # facet_wrap(`MAT.TYPE`~ ., scales = "free_y")+
   ggtitle('')+
-  ylab(expression(Total~Discharge~(m^3)))+
-  xlab('Flow Season')+
+  ylab(expression(total~discharge~(m^3)))+
+  xlab('flow season')+
   # theme(axis.text.x = element_text(angle = 90))+
   # theme(text = element_text(size = 45))+
   # theme(legend.position="bottom")+
-  theme_minimal()+
+  theme_bw()+
   theme(plot.title = element_blank(),
         axis.text = element_text(size = 55),
         axis.title = element_text(size = 55),
         axis.text.x = element_text(angle = 90),
-        # axis.title.x = element_blank(),
         strip.background = element_blank(),
-        # strip.text = element_text(size = 20),
-        # legend.text = element_text(size = 16),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
-        text = element_text(size = 55))
-ggsave(Qplot, filename="Crescent_seasonalQ.jpeg", device="jpeg", path=paste0(outdrive, 'Plots/'), width = 25, height = 25)
+        text = element_text(size = 55),
+        axis.ticks = element_line(color = "black", linewidth = 1),
+        axis.ticks.length = unit(0.3, "cm"))
+ggsave(Qplot, filename="Crescent_seasonalQ.jpeg", device="jpeg", path=here('Plots/'), width = 25, height = 25)
 
 ### Look at difference between average flows pre and post 2012
 AllQseason$group[AllQseason$season<2012]<-'a pre 2012'
@@ -880,9 +881,9 @@ Qplot2 <- ggplot(AllQseason, aes(x = group, y = Qtot_m3, color = group)) +
   scale_color_manual(values = c("a pre 2012" = friendly_pal("ito_seven")[1],   # orange
                                 "b post 2012" = friendly_pal("ito_seven")[2])) + # blue
   ggtitle('') +
-  ylab(~Total~Season~Discharge~(m^3)) +
+  ylab(~total~season~discharge~(m^3)) +
   xlab('') +
-  theme_minimal() +
+  theme_bw() +
   theme(plot.title = element_blank(),
         axis.text = element_text(size = 45),
         axis.title = element_text(size = 45),
@@ -892,8 +893,9 @@ Qplot2 <- ggplot(AllQseason, aes(x = group, y = Qtot_m3, color = group)) +
         legend.position = "none",
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
-        text = element_text(size = 45))
-
+        text = element_text(size = 45),
+        axis.ticks = element_line(color = "black", linewidth = 1),
+        axis.ticks.length = unit(0.3, "cm"))
 ggsave(Qplot2, filename = "Crescent_2012Q_boxplot.jpeg", device = "jpeg", path = here('Plots/'), width = 25, height = 25)
 
 ##Find the average seasonal discharge before and after 2012
@@ -905,10 +907,10 @@ Qplot2 <- ggplot(QAvg, aes(x = group, y = Avg_Qtot, fill = group)) +
   geom_bar(stat = "identity", position = "dodge2") +
   scale_fill_manual(values = c("a pre 2012" = friendly_pal("ito_seven")[1],   # orange
                                "b post 2012" = friendly_pal("ito_seven")[2])) + # blue
-  ggtitle('Pre- and Post-2012 Average Seasonal Discharge') +
-  ylab('Avg Total Discharge (l)') +
+  ggtitle('') +
+  ylab('avg total discharge (l)') +
   xlab('') +
-  theme_minimal()+
+  theme_bw()+
   theme(plot.title = element_blank(),
         axis.text = element_text(size = 45),
         axis.title = element_text(size = 45),
@@ -920,7 +922,9 @@ Qplot2 <- ggplot(QAvg, aes(x = group, y = Avg_Qtot, fill = group)) +
         # legend.text = element_text(size = 16),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
-        text = element_text(size = 45))+
+        text = element_text(size = 45),
+        axis.ticks = element_line(color = "black", linewidth = 1),
+        axis.ticks.length = unit(0.3, "cm"))+
   theme(legend.position = "bottom")
 
 ggsave(Qplot2, filename = "Crescent_2012Q.jpeg", device = "jpeg", path = here('Plots/'), width = 25, height = 25)
