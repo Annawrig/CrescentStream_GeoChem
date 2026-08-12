@@ -153,8 +153,9 @@ ordered_vars <- names(var_labels)[order(plain_labels)]
 
 Cres4$variable <- factor(Cres4$variable, levels = ordered_vars)
 
+#### For maunuscript 
 AvgPlot <- ggplot(Cres4, aes(y = `concentration mg/L`, x = Stream, color = Stream)) + 
-  geom_boxplot(size = 2) +
+  geom_boxplot(lwd = 3) +
   facet_wrap(~ variable, scales = "free_y",
              labeller = as_labeller(var_labels, default = label_parsed)) +
   scale_color_viridis_d() +
@@ -968,8 +969,12 @@ Chemo <- ggplot(All_data2, aes(y = `concentration (mg/l)`, x = `q_md`, color = g
   geom_abline(slope = -1, linetype = 3, linewidth = 2) +
   scale_color_manual(values = c("a pre 2012" = friendly_pal("ito_seven")[1],   # orange
                                 "b post 2012" = friendly_pal("ito_seven")[2])) + # blue
-  scale_y_continuous(trans = 'log10', breaks = c(0.1, 1, 10, 100)) +
-  scale_x_continuous(trans = 'log10', labels = comma) +
+  scale_y_continuous(trans = 'log10', 
+                     # breaks = c(0.1, 1, 10, 100),
+                     labels = scales::trans_format("log10", scales::math_format(10^.x))) +
+  scale_x_continuous(trans = 'log10', 
+                     breaks = scales::breaks_log(),
+                     labels = scales::trans_format("log10", scales::math_format(10^.x))) +
   ggtitle('') +
   ylab('concentration (mg/L)')+
   xlab('discharge (m/d)')+
@@ -977,7 +982,7 @@ Chemo <- ggplot(All_data2, aes(y = `concentration (mg/l)`, x = `q_md`, color = g
   theme(plot.title = element_blank(),
         axis.text = element_text(size = 13),
         axis.title = element_text(size = 20),
-        axis.title.x = element_blank(),
+        # axis.title.x = element_blank(),
         strip.text = element_text(size = 16),
         legend.text = element_text(size = 16),
         legend.position = "bottom")
